@@ -32,7 +32,7 @@ function generateTimeSlots(container, ruleNum, selectedSlots = []) {
             utcStartHour: hour,
             localStart: localStart,
             localEnd: localEnd,
-            timeValue: `${hour.toString().padStart(2, '0')}:00-${((hour + 2) % 24).toString().padStart(2, '0')}:00 UTC`, // Keep UTC values for backend
+            timeValue: `${hour.toString().padStart(2, '0')}:00Z`, // Use HH:00Z format for UTC start time
         });
     }
 
@@ -162,29 +162,34 @@ document.addEventListener('DOMContentLoaded', async (event) => {
             // Or { exists: false } if it does not.
             // For valid webhooks, we assume it's valid if we get a 200 OK.
             if (response.ok) {
-                webhookFeedback.innerHTML = '<span style="color: green;">Webhook URL is valid.</span>';
-                webhookFeedback.style.color = 'green';
-                document.getElementById('main-form-container').classList.remove('hidden');
                 isWebhookValidated = true;
                 initialWebhookUrl = webhookUrl; // Update initial URL upon successful validation
+                const mainFormContainer = document.getElementById('main-form-container');
 
                 if (data.exists && data.config) {
-                    console.log('Webhook exists. Populating form with existing config data.');
-                    populateFormWithJSON(data.config);
+                    webhookFeedback.innerHTML = '<span style="color: green;">Existing Webhook Found!</span>';
+                    console.log('Webhook exists. Potentially populating form with existing config data.');
+                    
+                    // Check if the form is currently visible BEFORE prompting
+                    if (!mainFormContainer.classList.contains('hidden')) {
+                        const confirmLoad = confirm('Load in existing config? This will erase any existing changes.');
+                        if (confirmLoad) {
+                            populateFormWithJSON(data.config.rules); // Pass only the rules config
+                        } else {
+                            console.log('User cancelled loading existing configuration.');
+                            // If user cancels, the form remains as is (visible), no changes to content
+                        }
+                    } else {
+                        // If the form is not visible, make it visible and populate without asking for confirmation
+                        mainFormContainer.classList.remove('hidden');
+                        populateFormWithJSON(data.config.rules); // Pass only the rules config
+                    }
                 } else {
-                    // If webhook doesn't exist or no config, clear/reset the form
+                    // For new webhooks, always make the form visible and populate with an empty config
+                    webhookFeedback.innerHTML = '<span style="color: green;">Webhook URL is valid.</span>';
                     console.log('Webhook does not exist or no config found. Resetting form.');
-                    populateFormWithJSON({
-                        webhookUrl: webhookUrl,
-                        rules: [{ // Start with one empty rule
-                                notificationMessage: '',
-                                matchType: 'Open',
-                                timeSlots: [],
-                                battleModes: {},
-                                maps: {},
-                        }]
-                    });
-
+                    mainFormContainer.classList.remove('hidden'); // Make form visible
+                    populateFormWithJSON([]); // Clear all rules and add one empty rule
                 }
             } else {
                 webhookFeedback.innerHTML = `<span class="error-message">${data.error || 'Invalid Webhook URL'}</span>`;
@@ -610,42 +615,31 @@ function generateMapItem(mapBase64Id, mapName, modeId, ruleNum, selectedMaps) {
 
 // --- JSON Loading and Population (Simulated) ---
 // This function would be called after the hx-get="/load-config" successfully fetches data.
-function populateFormWithJSON(jsonData) {
-    console.log('populateFormWithJSON called with data:', jsonData);
-    const webhookUrlInput = document.getElementById('webhook-url');
-    webhookUrlInput.value = jsonData.webhookUrl || '';
-    initialWebhookUrl = webhookUrlInput.value; // Reset initial URL for change detection
+function populateFormWithJSON(rulesConfig) {
+    console.log('populateFormWithJSON called with data:', rulesConfig);
+    // The webhook URL should NOT be touched by this function.
+    // It's handled by the check-webhook event listener directly.
 
-    // Remove existing rule sections except the first one (if it's empty/default)
     const notificationRulesContainer = document.getElementById('notification-rules-container');
-    while (notificationRulesContainer.children.length > 1) {
-        notificationRulesContainer.removeChild(notificationRulesContainer.lastChild);
-    }
-    // Clear or hide the first rule if new ones are coming
-    if (!jsonData.rules || jsonData.rules.length === 0) {
-        // If no rules in JSON, clear all existing and add one empty rule.
-        // This ensures the form starts clean if there's no config or an empty one.
-        notificationRulesContainer.innerHTML = '';
-        ruleCounter = 0; // Reset counter before adding the first rule
+    
+    // Clear all existing rule sections
+    notificationRulesContainer.innerHTML = '';
+    ruleCounter = 0; // Reset counter for a clean rebuild
+
+    if (!rulesConfig || rulesConfig.length === 0) {
+        // If no rules in config, add one empty rule.
         addAnotherRule({});
     } else {
-        // If rules exist, clear the container before populating
-        notificationRulesContainer.innerHTML = '';
-        ruleCounter = 0; // Reset counter for clean rebuild before adding rules from JSON
-        jsonData.rules.forEach(ruleConfig => {
+        // If rules exist, add them one by one
+        rulesConfig.forEach(ruleConfig => {
             addAnotherRule(ruleConfig); // Use the existing 'addAnotherRule' to create and populate
         });
     }
 
-    // Ensure the main form container is visible if a webhook URL is present
-    if (jsonData.webhookUrl) {
-        document.getElementById('main-form-container').classList.remove('hidden');
-        document.getElementById('webhook-feedback').innerHTML = '&nbsp;'; // Clear feedback
-        isWebhookValidated = true; // Assume webhook is validated if URL is present in loaded config
-    } else {
-        document.getElementById('main-form-container').classList.add('hidden');
-        isWebhookValidated = false; // Not validated if no URL
-    }
+    // Ensure the main form container is visible, as this function is only called after a successful webhook check
+    document.getElementById('main-form-container').classList.remove('hidden');
+    // Ensure webhook is validated, as this function is only called after a successful webhook check
+    isWebhookValidated = true;
 
     // After populating, re-attach all dynamic listeners for all rules
     attachDynamicListeners();

@@ -2,7 +2,7 @@ import json
 import os
 import urllib.request
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import re
 
 # S3 related imports and environment variables from notifyer_update.py
@@ -50,7 +50,7 @@ def validate_rules_payload(payload):
     if not isinstance(rules, list):
         return False, "rules is required and must be a list."
 
-    TIME_SLOT_REGEX = re.compile(r"^\d{2}:\d{2}-\d{2}:\d{2} UTC$")
+    TIME_SLOT_REGEX = re.compile(r"^\d{2}:\d{2}Z$")
     
     for i, rule in enumerate(rules):
         if not isinstance(rule, dict):
@@ -63,8 +63,8 @@ def validate_rules_payload(payload):
             return False, f"notificationMessage in rule {i} cannot exceed 300 characters."
 
         match_type = rule.get("matchType")
-        if match_type not in ["X-Battle", "Open"]:
-            return False, f"matchType in rule {i} must be 'X-Battle' or 'Open'."
+        if match_type not in ["X-Battle", "Series", "Open"]:
+            return False, f"matchType in rule {i} must be 'X-Battle' or 'Open' or 'Series'."
 
         time_slots = rule.get("timeSlots")
         if not isinstance(time_slots, list):
@@ -105,28 +105,185 @@ def validate_rules_payload(payload):
 
 # Load data.json during the Lambda initialization phase
 DATA = {}
+GENERALIZED_SCHEDULE_NODES = []
 try:
     response = s3.get_object(Bucket=S3_BUCKET_NAME, Key=DATA_FILE_KEY)
     DATA = json.loads(response['Body'].read().decode('utf-8'))
-    print(f"data.json loaded during init: {DATA}")
-except Exception as e:
-    print(f"Error loading {DATA_FILE_KEY} from S3 during init: {e}")
+    print(f"data.json loaded during init.")
 
-def process_notifications(timestamp):
-    # Placeholder for notification processing logic
-    print(f"Processing notifications for timestamp: {timestamp}")
-    # The DATA variable is now available globally, loaded during init.
-    print(f"Global DATA content (in process_notifications): {DATA}")
-    # In a real scenario, you would implement logic here to use the pre-loaded DATA
-    # and perform actions based on the timestamp and the event data.
+    all_nodes = []
+
+    # Process bankaraSchedules
+    for schedule_node in DATA.get('data', {}).get('bankaraSchedules', {}).get('nodes', []):
+        start_time = schedule_node['startTime']
+        end_time = schedule_node['endTime']
+        for setting in schedule_node.get('bankaraMatchSettings', []):
+            match_type = ""
+            if setting.get('bankaraMode') == "CHALLENGE":
+                match_type = "Series"
+            elif setting.get('bankaraMode') == "OPEN":
+                match_type = "Open"
+            
+            all_nodes.append({
+                "startTime": start_time,
+                "endTime": end_time,
+                "matchType": match_type,
+                "matchSettings": setting
+            })
+    
+    # Process xSchedules
+    for schedule_node in DATA.get('data', {}).get('xSchedules', {}).get('nodes', []):
+        start_time = schedule_node['startTime']
+        end_time = schedule_node['endTime']
+        setting = schedule_node.get('xMatchSetting', {})
+        
+        all_nodes.append({
+            "startTime": start_time,
+            "endTime": end_time,
+            "matchType": "X-Battle",
+            "matchSettings": setting
+        })
+
+    # Sort nodes by startTime descending
+    def get_sort_key(node):
+        try:
+            dt_obj = datetime.fromisoformat(node['startTime'].replace('Z', '+00:00'))
+            if dt_obj.tzinfo is None:
+                dt_obj = dt_obj.replace(tzinfo=timezone.utc)
+            return dt_obj
+        except ValueError:
+            # Handle invalid datetime format by returning a very old date.
+            # This ensures they are at the end of the descending sorted list and effectively ignored.
+            return datetime.min.replace(tzinfo=timezone.utc)
+    
+    GENERALIZED_SCHEDULE_NODES = sorted(all_nodes, key=get_sort_key, reverse=True)
+    print(f"Generalized schedule nodes processed and sorted during init. Total nodes: {len(GENERALIZED_SCHEDULE_NODES)}")
+
+except Exception as e:
+    print(f"Error loading or processing {DATA_FILE_KEY} from S3 during init: {e}")
+
+def process_notifications(payload, timestamp):
+    webhook_url = payload.get('webhook_url')
+    rules = payload.get('data', {}).get('rules', [])
+
+    if not webhook_url or not rules:
+        return False
+    
+    notifications = {}
+
+    current_dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+    if current_dt.tzinfo is None: # Ensure current_dt is timezone-aware
+        current_dt = current_dt.replace(tzinfo=timezone.utc)
+
+    for node in GENERALIZED_SCHEDULE_NODES:
+        node_start_dt = datetime.fromisoformat(node['startTime'].replace('Z', '+00:00'))
+        if node_start_dt.tzinfo is None: # Ensure node_start_dt is timezone-aware
+            node_start_dt = node_start_dt.replace(tzinfo=timezone.utc)
+        
+        if node_start_dt <= current_dt:
+            break
+
+        battle_mode_name = node['matchSettings']['vsRule']['name']
+        battle_mode_name = node['matchSettings']['vsRule']['name']
+        map_names = [stage['name'] for stage in node['matchSettings']['vsStages']]
+        map_ids = [stage['id'] for stage in node['matchSettings']['vsStages']]
+
+
+        for rule in rules:
+            # Check matchType
+            if rule['matchType'] != node['matchType']:
+                continue
+
+            # Check battleModes
+            vs_rule_id = node['matchSettings']['vsRule']['id']
+            if vs_rule_id not in rule['battleModes'] or not rule['battleModes'][vs_rule_id]:
+                continue
+            
+            # Check timeSlots (ignore date)
+            node_time_str = node_start_dt.strftime("%H:%M") + "Z"
+            if node_time_str not in rule['timeSlots']:
+                continue
+
+            # Check maps
+            rule_map_details = rule['maps'].get(vs_rule_id)
+            if not rule_map_details:
+                continue
+            
+            notify_type = rule_map_details['notifyType']
+            selected_maps = rule_map_details['selectedMaps']
+            
+            map_match = False
+            if notify_type == "at-least-one":
+                if any(map_id in selected_maps for map_id in map_ids):
+                    map_match = True
+            elif notify_type == "two-same-rotation":
+                if all(map_id in selected_maps for map_id in map_ids) and len(map_ids) == 2:
+                    map_match = True
+            
+            if not map_match:
+                continue
+
+            # If all criteria met, add to notifications dict
+            notification_message_key = rule['notificationMessage']
+            if notification_message_key not in notifications:
+                notifications[notification_message_key] = []
+            notifications[notification_message_key].append(node)
+    
+    if not notifications:
+        return True # Return True even if no notifications, as processing was successful.
+
+    for notification_message, matched_nodes_list in notifications.items():
+        message_parts = [notification_message]
+        for matched_node in matched_nodes_list:
+            node_start_dt = datetime.fromisoformat(matched_node['startTime'].replace('Z', '+00:00'))
+            unix_timestamp = int(node_start_dt.timestamp())
+            node_end_dt = datetime.fromisoformat(matched_node['endTime'].replace('Z', '+00:00'))
+            if node_end_dt.tzinfo is None: # Ensure node_end_dt is timezone-aware
+                node_end_dt = node_end_dt.replace(tzinfo=timezone.utc)
+            unix_end_timestamp = int(node_end_dt.timestamp())
+            
+            summary_battle_mode_name = matched_node['matchSettings']['vsRule']['name']
+            summary_match_type = matched_node['matchType']
+            summary_map_names = ", ".join([stage['name'] for stage in matched_node['matchSettings']['vsStages']])
+            summary_timeslot = f"<t:{unix_timestamp}:f> - <t:{unix_end_timestamp}:T>"
+            
+            message_parts.append(
+                f"-  **{summary_timeslot}**: {summary_map_names} {summary_battle_mode_name} ({summary_match_type})"
+            )
+        
+        full_message = "\n".join(message_parts)
+        send_discord_message(webhook_url, full_message)
+    
+    return True
 
 def lambda_handler(event, context):
     print(f"Received event: {json.dumps(event)}")
     
-    # Extract timestamp or other relevant data from the EventBridge event
-    timestamp = event.get('time', 'N/A')
+    webhook_url = event.get('webhook_url')
+    data_payload = event.get('data')
     
-    process_notifications(timestamp)
+    if not webhook_url or not data_payload:
+        print("Webhook URL or data payload missing from lambda event.")
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Invalid event payload for notifications.')
+        }
+
+    # Calculate timestamp 22 hours in the future from now (UTC)
+    future_timestamp = datetime.now(timezone.utc) + timedelta(hours=22)
+    
+    full_notification_payload = {
+        "webhook_url": webhook_url,
+        "data": data_payload
+    }
+    
+    result = process_notifications(full_notification_payload, future_timestamp.isoformat())
+
+    if not result:
+        return {
+            'statusCode': 500,
+            'body': json.dumps('Failed to process some notifications.')
+        }
     
     return {
         'statusCode': 200,
@@ -147,20 +304,27 @@ def handler(event, context):
                 'body': json.dumps({"message": "Webhook URL is required."})
             }
 
+        print(f"DEBUG: Entering /check-webhook for URL: {webhook_url}")
         # Validate webhook by sending a message
         if not send_discord_message(webhook_url, "Validating Splat-Notifyer Webhook..."):
+            print(f"DEBUG: Webhook validation failed for URL: {webhook_url}")
             return {
                 'statusCode': 400,
                 'body': json.dumps({"message": "Webhook Validation Failure"})
             }
+        print(f"DEBUG: Webhook validated successfully for URL: {webhook_url}")
 
         # Query DynamoDB
         try:
+            print(f"DEBUG: Querying DynamoDB for webhook_url: {webhook_url}")
             response = table.get_item(Key={'webhook_url': webhook_url})
             item = response.get('Item')
+            print(f"DEBUG: DynamoDB response for {webhook_url}: {item}")
             if item and 'schedule' in item:
                 schedule_name = item['schedule']
+                print(f"DEBUG: Found schedule {schedule_name} in DynamoDB for {webhook_url}")
                 try:
+                    print(f"DEBUG: Getting schedule details for {schedule_name}")
                     schedule_response = scheduler_client.get_schedule(
                         Name=schedule_name,
                         GroupName=EVENTBRIDGE_SCHEDULE_GROUP_NAME
@@ -168,31 +332,38 @@ def handler(event, context):
                     schedule_input_str = schedule_response['Target']['Input']
                     schedule_input = json.loads(schedule_input_str)
                     data_from_schedule = schedule_input.get('data', {})
+                    print(f"DEBUG: Retrieved data from schedule for {webhook_url}: {data_from_schedule}")
                     return {
                         'statusCode': 200,
-                        'body': json.dumps(data_from_schedule)
+                        'headers': {'Content-Type': 'application/json'},
+                        'body': json.dumps({"exists": True, "config": data_from_schedule})
                     }
                 except scheduler_client.exceptions.ResourceNotFoundException:
-                    print(f"Schedule {schedule_name} not found for webhook {webhook_url}")
+                    print(f"ERROR: Schedule {schedule_name} not found for webhook {webhook_url}")
                     return {
                         'statusCode': 200,
-                        'body': json.dumps({})
+                        'headers': {'Content-Type': 'application/json'},
+                        'body': json.dumps({"exists": False})
                     }
                 except Exception as e:
-                    print(f"Error retrieving schedule for webhook {webhook_url}: {e}")
+                    print(f"ERROR: Error retrieving schedule for webhook {webhook_url}: {e}")
                     return {
                         'statusCode': 500,
+                        'headers': {'Content-Type': 'application/json'},
                         'body': json.dumps({"message": "Internal server error during schedule retrieval."})
                     }
             else:
+                print(f"DEBUG: No schedule found in DynamoDB for webhook_url: {webhook_url}")
                 return {
                     'statusCode': 200,
-                    'body': json.dumps({})
+                    'headers': {'Content-Type': 'application/json'},
+                    'body': json.dumps({"exists": False})
                 }
         except Exception as e:
-            print(f"Error querying DynamoDB: {e}")
+            print(f"ERROR: Error querying DynamoDB for webhook {webhook_url}: {e}")
             return {
                 'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({"message": "Internal server error during database query."})
             }
     elif path == '/submit-webhook' and http_method == 'POST':
@@ -201,6 +372,7 @@ def handler(event, context):
         if not is_valid:
             return {
                 'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({"message": f"Invalid payload: {error_message}"})
             }
             
@@ -211,10 +383,11 @@ def handler(event, context):
         if not send_discord_message(webhook_url, "Initializing Splat-Notifyer Webhook..."):
             return {
                 'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({"message": "Webhook Validation Failure"})
             }
 
-        current_timestamp = datetime.utcnow().isoformat()
+        current_timestamp = datetime.now(timezone.utc).isoformat()
         schedule_name = f"splat-notifyer-{abs(hash(webhook_url))}" # Unique name for schedule
 
         # Create/Update EventBridge Schedule
@@ -260,6 +433,7 @@ def handler(event, context):
             print(f"Error creating/updating EventBridge schedule: {e}")
             return {
                 'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({"message": f"Error configuring notification schedule: {e}"})
             }
 
@@ -276,23 +450,28 @@ def handler(event, context):
             print(f"Error updating DynamoDB: {e}")
             return {
                 'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({"message": "Internal server error during database update."})
             }
         
         # Invoke process_notifications
         try:
-            process_notifications(current_timestamp)
+            full_notification_payload = {
+                "webhook_url": webhook_url,
+                "data": data
+            }
+            process_notifications(full_notification_payload, current_timestamp)
         except Exception as e:
-            print(f"Error invoking process_notifications: {e}")
-            # This error might not be critical enough to fail the whole submission
-            # but should be logged and potentially handled differently.
+            print(f"Error invoking process_notifications during submission: {e}")
 
         return {
             'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({"message": "Webhook submitted and schedule configured successfully.", "schedule_name": schedule_name})
         }
     
     return {
         'statusCode': 404,
+        'headers': {'Content-Type': 'application/json'},
         'body': json.dumps({"message": "Not Found"})
     }
