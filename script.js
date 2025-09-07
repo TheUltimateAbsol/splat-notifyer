@@ -1,5 +1,12 @@
 let initialWebhookUrl = document.getElementById('webhook-url').value; // Store initial webhook URL
 let isWebhookValidated = false; // Track webhook validation status
+let mapsData = {}; // Store maps.json data globally
+let battleModesData = {}; // Store batle-modes.json data globally
+
+// Helper function to escape special characters in CSS selectors, particularly useful for IDs
+function escapeCssSelector(selector) {
+    return CSS.escape(selector);
+}
 
 // Client-side JavaScript for handling timezone conversion and dynamic form elements
 
@@ -94,16 +101,17 @@ function attachDynamicListeners() {
 // Hide/show map selectors based on battle mode checkboxes (moved to global scope)
 function handleBattleModeChange(e) {
     const ruleNum = this.name.split('-')[1];
-    const mode = e.target.value.toLowerCase().replace(' ', '-');
+    const modeId = e.target.value; // This is the base64 ID
+    const escapedModeId = escapeCssSelector(modeId); // Escape the modeId for selector use
+    const modeName = battleModesData[modeId] ? battleModesData[modeId].name : modeId; // Get display name
     const mapSelectorsContainer = document.getElementById(`map-selectors-container-${ruleNum}`);
-    let mapSelector = mapSelectorsContainer.querySelector(`#map-selector-${mode}-${ruleNum}`);
+    let mapSelector = mapSelectorsContainer.querySelector(`#map-selector-${escapedModeId}-${ruleNum}`);
 
     if(e.target.checked && !mapSelector) {
         // If map selector doesn't exist and checkbox is checked, generate and append it
-        const modeName = e.target.value;
-        mapSelectorsContainer.insertAdjacentHTML('beforeend', generateMapSelector(modeName, ruleNum, null));
-        // Get the newly added map selector
-        mapSelector = mapSelectorsContainer.querySelector(`#map-selector-${mode}-${ruleNum}`);
+        mapSelectorsContainer.insertAdjacentHTML('beforeend', generateMapSelector(modeId, modeName, ruleNum, null));
+        // Get the newly added map selector using the escaped ID
+        mapSelector = mapSelectorsContainer.querySelector(`#map-selector-${escapedModeId}-${ruleNum}`);
     }
 
     if (mapSelector) {
@@ -111,7 +119,11 @@ function handleBattleModeChange(e) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', (event) => {
+document.addEventListener('DOMContentLoaded', async (event) => {
+    // Fetch maps and battle modes data
+    await fetchMapsData();
+    await fetchBattleModesData();
+
     // Initial call to generate time slots for the first rule and attach listeners
     generateTimeSlots(document.getElementById('time-slots-1'), 1);
     attachDynamicListeners(); // Attach for initial form (e.g., battle mode toggles)
@@ -142,27 +154,38 @@ document.addEventListener('DOMContentLoaded', (event) => {
         webhookFeedback.style.color = 'black';
 
         try {
-            const response = await fetch(`/check-webhook-url?webhookUrl=${encodeURIComponent(webhookUrl)}`);
+            const apiUrl = "https://api-splat-notifyer.splatpass.net";
+            const response = await fetch(`${apiUrl}/check-webhook?webhookUrl=${encodeURIComponent(webhookUrl)}`);
             const data = await response.json(); // Assuming the backend returns JSON
             
-            if (response.ok && data.isValid) {
+            // The API will return { exists: true, config: {...} } if the webhook exists
+            // Or { exists: false } if it does not.
+            // For valid webhooks, we assume it's valid if we get a 200 OK.
+            if (response.ok) {
                 webhookFeedback.innerHTML = '<span style="color: green;">Webhook URL is valid.</span>';
                 webhookFeedback.style.color = 'green';
                 document.getElementById('main-form-container').classList.remove('hidden');
                 isWebhookValidated = true;
                 initialWebhookUrl = webhookUrl; // Update initial URL upon successful validation
 
-                // Now load config if webhook is valid
-                console.log('Fetching /load-config after webhook validation.');
-                const configResponse = await fetch('/load-config');
-                const configData = await configResponse.json();
-                if (configResponse.ok) {
-                    populateFormWithJSON(configData);
+                if (data.exists && data.config) {
+                    console.log('Webhook exists. Populating form with existing config data.');
+                    populateFormWithJSON(data.config);
                 } else {
-                    console.error('Error loading config:', configData);
-                    // Optionally display an error for config loading
-                }
+                    // If webhook doesn't exist or no config, clear/reset the form
+                    console.log('Webhook does not exist or no config found. Resetting form.');
+                    populateFormWithJSON({
+                        webhookUrl: webhookUrl,
+                        rules: [{ // Start with one empty rule
+                                notificationMessage: '',
+                                matchType: 'Open',
+                                timeSlots: [],
+                                battleModes: {},
+                                maps: {},
+                        }]
+                    });
 
+                }
             } else {
                 webhookFeedback.innerHTML = `<span class="error-message">${data.error || 'Invalid Webhook URL'}</span>`;
                 webhookFeedback.style.color = 'red';
@@ -209,7 +232,8 @@ document.getElementById('main-submit-button').addEventListener('click', async (e
     console.log('Collected Form Data JSON Payload SENT:', jsonPayload); // Re-adding for transparency based on previous user input
 
     try {
-        const response = await fetch('/submit-config', {
+        const apiUrl = "https://api-splat-notifyer.splatpass.net";
+        const response = await fetch(`${apiUrl}/submit-webhook`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -267,13 +291,13 @@ function collectFormData() {
         // Collect battle modes and associated maps/notify types
         const checkedBattleModeCheckboxes = ruleSection.querySelectorAll(`input[name="battleMode-${ruleNum}"]:checked`);
         checkedBattleModeCheckboxes.forEach(checkbox => {
-            const modeName = checkbox.value;
-            const modeId = modeName.toLowerCase().replace(' ', '-');
-            rule.battleModes[modeName] = true; // Mark as selected
+            const modeId = checkbox.value; // Store the base64 ID
+            const escapedModeId = escapeCssSelector(modeId);
+            rule.battleModes[modeId] = true; // Mark as selected
 
             const mapSelectorsContainer = document.getElementById(`map-selectors-container-${ruleNum}`);
-            const mapSelector = mapSelectorsContainer.querySelector(`#map-selector-${modeId}-${ruleNum}`);
-             
+            const mapSelector = mapSelectorsContainer.querySelector(`#map-selector-${escapedModeId}-${ruleNum}`);
+            
             // Only collect map data if the map selector is visible
             if (mapSelector && !mapSelector.classList.contains('hidden')) {
                 const selectedMaps = [];
@@ -284,7 +308,7 @@ function collectFormData() {
                 const notifyTypeElement = mapSelector.querySelector(`input[name="map-notify-type-${modeId}-${ruleNum}"]:checked`);
                 const notifyType = notifyTypeElement ? notifyTypeElement.value : 'at-least-one'; // Default if none checked
 
-                rule.maps[modeName] = {
+                rule.maps[modeId] = { // Use modeId as key for rule.maps
                     selectedMaps: selectedMaps,
                     notifyType: notifyType
                 };
@@ -330,6 +354,8 @@ function validateForm() {
         const notificationMessageInput = ruleSection.querySelector(`input[name="notificationMessage-${ruleNum}"]`);
         if (!notificationMessageInput.value.trim()) {
             ruleErrors.push('Notification Message cannot be empty.');
+        } else if (notificationMessageInput.value.length > 300) {
+            ruleErrors.push('Notification Message cannot exceed 300 characters.');
         }
 
         // 3. In each notification rule:
@@ -348,9 +374,10 @@ function validateForm() {
         // If no battle modes are selected, we can't check maps, so skip map validation for this rule
         if (battleModes.length > 0) {
             battleModes.forEach(battleModeCheckbox => {
-                const modeName = battleModeCheckbox.value;
-                const modeId = modeName.toLowerCase().replace(' ', '-');
-                const mapSelector = document.getElementById(`map-selector-${modeId}-${ruleNum}`);
+                const modeId = battleModeCheckbox.value; // This is the base64 ID
+                const escapedModeId = escapeCssSelector(modeId);
+                const modeName = battleModesData[modeId] ? battleModesData[modeId].name : modeId; // Get display name
+                const mapSelector = document.getElementById(`map-selector-${escapedModeId}-${ruleNum}`);
 
                 if (mapSelector && !mapSelector.classList.contains('hidden')) { // Only validate if map selector is visible
                     // c. In each battle mode, at least one map selected
@@ -410,8 +437,8 @@ function addAnotherRule(config = {}) {
         <br>
 
         <!-- Notification Message -->
-        <label for="notificationMessage-${ruleCounter}">Notification Message:</label>
-        <input type="text" id="notificationMessage-${ruleCounter}" name="notificationMessage-${ruleCounter}" size="50" required value="${config.notificationMessage || ''}">
+        <label for="notificationMessage-${ruleCounter}">Notification Message (max 300 characters):</label>
+        <input type="text" id="notificationMessage-${ruleCounter}" name="notificationMessage-${ruleCounter}" size="50" maxlength="300" required value="${config.notificationMessage || ''}">
         <br><br>
 
         <!-- Match Type -->
@@ -432,18 +459,18 @@ function addAnotherRule(config = {}) {
 
         <!-- Battle Modes -->
         <label>Battle Modes:</label><br>
-        <input type="checkbox" name="battleMode-${ruleCounter}" value="Splat Zones" ${config.battleModes && config.battleModes['Splat Zones'] ? 'checked' : ''}> Splat Zones
-        <input type="checkbox" name="battleMode-${ruleCounter}" value="Tower Control" ${config.battleModes && config.battleModes['Tower Control'] ? 'checked' : ''}> Tower Control
-        <input type="checkbox" name="battleMode-${ruleCounter}" value="Turf War" ${config.battleModes && config.battleModes['Turf War'] ? 'checked' : ''}> Turf War
-        <input type="checkbox" name="battleMode-${ruleCounter}" value="Clam Blitz" ${config.battleModes && config.battleModes['Clam Blitz'] ? 'checked' : ''}> Clam Blitz
+        <input type="checkbox" name="battleMode-${ruleCounter}" value="VnNSdWxlLTE=" ${config.battleModes && config.battleModes['VnNSdWxlLTE='] ? 'checked' : ''}> Splat Zones
+        <input type="checkbox" name="battleMode-${ruleCounter}" value="VnNSdWxlLTI=" ${config.battleModes && config.battleModes['VnNSdWxlLTI='] ? 'checked' : ''}> Tower Control
+        <input type="checkbox" name="battleMode-${ruleCounter}" value="VnNSdWxlLTM=" ${config.battleModes && config.battleModes['VnNSdWxlLTM='] ? 'checked' : ''}> Rainmaker
+        <input type="checkbox" name="battleMode-${ruleCounter}" value="VnNSdWxlLTQ=" ${config.battleModes && config.battleModes['VnNSdWxlLTQ='] ? 'checked' : ''}> Clam Blitz
         <br><br>
 
         <!-- Map Selectors (dynamically added per battle mode) -->
         <div id="map-selectors-container-${ruleCounter}">
-            ${generateMapSelector('Splat Zones', ruleCounter, config.maps ? config.maps['Splat Zones'] : null)}
-            ${generateMapSelector('Tower Control', ruleCounter, config.maps ? config.maps['Tower Control'] : null)}
-            ${generateMapSelector('Turf War', ruleCounter, config.maps ? config.maps['Turf War'] : null)}
-            ${generateMapSelector('Clam Blitz', ruleCounter, config.maps ? config.maps['Clam Blitz'] : null)}
+            ${generateMapSelector('VnNSdWxlLTE=', 'Splat Zones', ruleCounter, config.maps ? config.maps['VnNSdWxlLTE='] : null)}
+            ${generateMapSelector('VnNSdWxlLTI=', 'Tower Control', ruleCounter, config.maps ? config.maps['VnNSdWxlLTI='] : null)}
+            ${generateMapSelector('VnNSdWxlLTM=', 'Rainmaker', ruleCounter, config.maps ? config.maps['VnNSdWxlLTM='] : null)}
+            ${generateMapSelector('VnNSdWxlLTQ=', 'Clam Blitz', ruleCounter, config.maps ? config.maps['VnNSdWxlLTQ='] : null)}
         </div>
     `;
     container.appendChild(newRuleSection);
@@ -519,33 +546,62 @@ function deleteRule(event) {
     }
 }
 
-function generateMapSelector(modeName, ruleNum, mapConfig) {
-    const modeId = modeName.toLowerCase().replace(' ', '-');
+async function fetchMapsData() {
+    try {
+        const response = await fetch('maps.json');
+        mapsData = await response.json();
+    } catch (error) {
+        console.error('Error fetching maps.json:', error);
+    }
+}
+
+async function fetchBattleModesData() {
+    try {
+        const response = await fetch('batle-modes.json');
+        battleModesData = await response.json();
+    } catch (error) {
+        console.error('Error fetching batle-modes.json:', error);
+    }
+}
+
+function generateMapSelector(modeId, modeName, ruleNum, mapConfig) {
     const notifyType = mapConfig ? mapConfig.notifyType : 'at-least-one';
     const selectedMaps = mapConfig ? mapConfig.selectedMaps : [];
 
+    let mapItemsHtml = '';
+    // Iterate over the mapsData object to create map checkboxes
+    for (const mapBase64Id in mapsData) {
+        if (mapsData.hasOwnProperty(mapBase64Id)) {
+            const mapName = mapsData[mapBase64Id].name;
+            mapItemsHtml += generateMapItem(mapBase64Id, mapName, modeId, ruleNum, selectedMaps);
+        }
+    }
+
+    // Determine initial visibility. If there are no maps configured, it should be hidden.
+    // If mapConfig exists and has notifyType or selectedMaps, it should be visible.
+    const isHidden = !selectedMaps.length && !mapConfig;
+
     return `
-        <div class="map-selector ${!selectedMaps.length && (!mapConfig || !mapConfig.notifyType) ? 'hidden' : ''}" id="map-selector-${modeId}-${ruleNum}">
+        <div class="map-selector ${isHidden ? 'hidden' : ''}" id="map-selector-${modeId}-${ruleNum}">
             <h4>Maps for ${modeName}</h4>
             <div>
                 <input type="radio" name="map-notify-type-${modeId}-${ruleNum}" value="at-least-one" ${notifyType === 'at-least-one' ? 'checked' : ''}> Notify me when rotation includes at least one selected map
                 <input type="radio" name="map-notify-type-${modeId}-${ruleNum}" value="two-same-rotation" ${notifyType === 'two-same-rotation' ? 'checked' : ''}> Notify me when 2 selected maps are in the same rotation
             </div>
             <div class="map-list">
-                ${generateMapItem('Walleye Warehouse', modeId, ruleNum, selectedMaps)}
-                ${generateMapItem('Myrtle Beach', modeId, ruleNum, selectedMaps)}
-                ${generateMapItem('Walmart', modeId, ruleNum, selectedMaps)}
+                ${mapItemsHtml}
             </div>
         </div>
     `;
 }
 
-function generateMapItem(mapName, modeId, ruleNum, selectedMaps) {
-    const isChecked = selectedMaps.includes(mapName) ? 'checked' : '';
-    const imageUrl = `https://via.placeholder.com/150x100?text=${encodeURIComponent(mapName)}`;
+function generateMapItem(mapBase64Id, mapName, modeId, ruleNum, selectedMaps) {
+    const isChecked = selectedMaps.includes(mapBase64Id) ? 'checked' : '';
+    // Placeholder image URL, can be updated later with actual map images
+    const imageUrl = `https://via.placeholder.com/100x75?text=${encodeURIComponent(mapName)}`;
     return `
         <div class="map-item">
-            <input type="checkbox" name="map-${modeId}-${ruleNum}" value="${mapName}" ${isChecked}>
+            <input type="checkbox" name="map-${modeId}-${ruleNum}" value="${mapBase64Id}" ${isChecked}>
             <img src="${imageUrl}" alt="${mapName}">
             <figcaption>${mapName}</figcaption>
         </div>
@@ -566,25 +622,19 @@ function populateFormWithJSON(jsonData) {
         notificationRulesContainer.removeChild(notificationRulesContainer.lastChild);
     }
     // Clear or hide the first rule if new ones are coming
-    if (jsonData.rules && jsonData.rules.length > 0) {
-         // Clear the content of the first rule to be repopulated or replaced
-        // For simplicity, we'll assume the first rule will be overwritten or removed
-        // by the dynamic adding of rules from JSON, so we'll just increment ruleCounter.
-        // If the first rule should be treated specially, more complex logic is needed.
+    if (!jsonData.rules || jsonData.rules.length === 0) {
+        // If no rules in JSON, clear all existing and add one empty rule.
+        // This ensures the form starts clean if there's no config or an empty one.
         notificationRulesContainer.innerHTML = '';
-        ruleCounter = 0; // Reset counter for clean rebuild
-    }
-
-
-    if (jsonData.rules && jsonData.rules.length > 0) {
+        ruleCounter = 0; // Reset counter before adding the first rule
+        addAnotherRule({});
+    } else {
+        // If rules exist, clear the container before populating
+        notificationRulesContainer.innerHTML = '';
+        ruleCounter = 0; // Reset counter for clean rebuild before adding rules from JSON
         jsonData.rules.forEach(ruleConfig => {
             addAnotherRule(ruleConfig); // Use the existing 'addAnotherRule' to create and populate
         });
-    } else {
-        // If no rules in JSON, ensure at least one empty rule exists (or keep the default one)
-        if (notificationRulesContainer.children.length === 0) {
-            addAnotherRule({});
-        }
     }
 
     // Ensure the main form container is visible if a webhook URL is present
