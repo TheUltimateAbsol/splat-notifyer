@@ -252,8 +252,18 @@ def process_notifications(payload, timestamp):
     if not notifications:
         return True # Return True even if no notifications, as processing was successful.
 
+    ABBREVIATIONS = {
+        "Splat Zones": "SZ",
+        "Tower Control": "TC",
+        "Rainmaker": "RM",
+        "Clam Blitz": "CB"
+    }
+
     for notification_message, matched_nodes_list in notifications.items():
         message_parts = [notification_message]
+        # Sort matched_nodes_list by startTime for consistent chronological order for discord pings.
+        matched_nodes_list.sort(key=lambda x: datetime.fromisoformat(x['startTime'].replace('Z', '+00:00')))
+
         for matched_node in matched_nodes_list:
             node_start_dt = datetime.fromisoformat(matched_node['startTime'].replace('Z', '+00:00'))
             unix_timestamp = int(node_start_dt.timestamp())
@@ -263,12 +273,15 @@ def process_notifications(payload, timestamp):
             unix_end_timestamp = int(node_end_dt.timestamp())
             
             summary_battle_mode_name = matched_node['matchSettings']['vsRule']['name']
+            # Apply abbreviation
+            summary_battle_mode_name_abbreviated = ABBREVIATIONS.get(summary_battle_mode_name, summary_battle_mode_name)
+
             summary_match_type = matched_node['matchType']
             summary_map_names = ", ".join([stage['name'] for stage in matched_node['matchSettings']['vsStages']])
             summary_timeslot = f"<t:{unix_timestamp}:f> - <t:{unix_end_timestamp}:T>"
             
             message_parts.append(
-                f"-  **{summary_timeslot}**: {summary_map_names} {summary_battle_mode_name} ({summary_match_type})"
+                f"-  **{summary_timeslot}**: {summary_map_names} {summary_battle_mode_name_abbreviated} ({summary_match_type})"
             )
         
         full_message = "\n".join(message_parts)
