@@ -25,7 +25,7 @@ html {
 
 body {
     font-family: 'BlitzMain', sans-serif;
-    margin: 20px 20px 40px; /* Adjusted margin for overall page content, leaving space for footer */
+    margin: 20px 20px 80px; /* Increased bottom margin for overall page content, leaving more space for footer */
     background-color: black; /* Fallback background color */
     background-image: url('./assets/DarkMode-Footer.png'); /* Darkmode footer background */
     background-repeat: repeat; /* Ensure the image tiles */
@@ -58,6 +58,10 @@ h2, h4, h5, h6 {
 .rule-section.selected-series .notification-rule-header,
 .rule-section.selected-x-battle .notification-rule-header {
     color: white;
+}
+
+.rule-section {
+    /* Reverted mobile specific margin, will add inside media query */
 }
 
 .rule-section.selected-open .delete-icon-button,
@@ -98,6 +102,8 @@ h2, h4, h5, h6 {
 }
 
 #webhook-url {
+    width: 60%; /* Make webhook URL text box wider on desktop */
+    max-width: 600px; /* Limit maximum width */
     font-size: 1.1em; /* Made webhook URL text box slightly bigger */
     padding: 8px; /* Added padding for better appearance */
 }
@@ -108,7 +114,7 @@ h2, h4, h5, h6 {
 }
 
 #webhook-feedback {
-    color: white; /* Changed webhook status text to white */
+    color: white !important; /* Ensure webhook status text is white, overriding any default browser styles */
 }
 
 .rule-section {
@@ -170,7 +176,7 @@ details summary {
 /* Centering the User/Role Ping Syntax dropdown */
 .user-role-ping-syntax {
     max-width: 600px; /* Adjust width as needed for centering */
-    margin: 10px auto; /* Reduced margin */
+    margin: 5px auto 10px auto; /* Adjusted margin for better spacing */
     padding: 5px; /* Reduced padding */
     background-color: #f9f9f9; /* Light background for the dropdown content */
     border: 1px solid #ddd;
@@ -190,7 +196,7 @@ details summary {
     color: black; /* Ensure the content text is black, as this is within a form with a light background */
 }
 
-.map-selector { padding: 10px; margin-top: 10px; border-radius: 3px; }
+.map-selector { padding: 10px; margin-top: 5px; border-radius: 3px; }
 
 .map-list {
     display: flex;
@@ -371,7 +377,7 @@ details summary {
     flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
-    margin: 10px auto;
+    margin: 5px auto;
     max-width: 750px; /* Adjust as needed for 3 buttons */
 }
 
@@ -440,7 +446,7 @@ details summary {
 .delete-icon-button:hover {
     color: currentColor; /* Icon color should not change on hover */
     background-color: transparent; /* No background fill on hover */
-    border: 2px solid rgba(0, 0, 0, 0.5); /* Black outline for hover */
+    border: 2px solid rgba(255, 255, 255, 0.5); /* White outline for hover on dark background */
     box-shadow: -4px 0 8px rgba(0, 0, 0, 0.4), 4px 0 8px rgba(0, 0, 0, 0.4); /* Side dropshadow, now black */
 }
 
@@ -534,11 +540,11 @@ details summary {
 }
 
 .notification-message-input {
-    width: 80%; /* Make it wider */
+    width: calc(100% - 24px); /* Make it wider, calc for padding */
     max-width: 600px; /* Cap maximum width */
     height: 100px; /* Make it multiline */
     padding: 12px;
-    margin: 0 auto 20px auto;
+    margin: 0 auto 10px auto;
     display: block; /* Ensure it takes full width for centering */
     border: 2px solid lighten(#563aa8, 10%); /* Lighter border for contrast with white background */
     border-radius: 8px; /* Rounded corners */
@@ -551,6 +557,7 @@ details summary {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Subtle shadow */
     transition: all 0.2s ease-in-out;
     resize: vertical; /* Allow vertical resizing */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .notification-message-input:focus {
@@ -590,13 +597,14 @@ details summary {
             rgba(255, 255, 255, 0.0) 100%
         );
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 1em; /* Increased font size for desktop timeslot */
     text-align: center;
     transition: all 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     color: white; /* Keep text white for contrast with dark purple */
     box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.25); /* More depth with shadows */
     transform: perspective(1000px) rotateX(7deg) scale(1); /* 3D effect in unselected state */
-    height: 58px; /* Current desired height */
+    height: 50px; /* Reduced height */
+    padding: 5px; /* Reduced padding */
     /* width is now controlled by grid-template-columns */
 }
 
@@ -636,16 +644,21 @@ details summary {
 }
 
 #response {
-    text-align: center; /* Center the text */
-    margin: 20px auto; /* Center the div and give it vertical spacing */
-    max-width: 700px; /* Limit its width for better readability */
-}
-
-#response div {
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    display: inline-block; /* Allow text-align: center to work on its parent */
+    text-align: left; /* Do not center the text in the response box */
+    margin: 20px auto;
+    max-width: 700px;
+    padding: 20px; /* Increased padding for more space internally */
+    background-color: #333; /* Dark grey background */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* Subtle shadow */
+    color: white; /* White text for contrast */
+    font-family: 'Consolas', 'Courier New', monospace; /* Monospace font for "code" feel */
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap; /* Preserve whitespace and wrap long lines */
+    word-wrap: break-word; /* Break long words */
+    display: none; /* Hidden by default, script will show it */
+    box-sizing: border-box; /* Include padding in width */
 }
 
 .add-another-rule-text:hover {
@@ -658,7 +671,7 @@ details summary {
     width: 80%; /* Increased width */
     max-width: 550px; /* Cap maximum width further to ensure single line for larger text */
     padding: 20px 30px;
-    margin: 50px auto 80px auto;
+    margin: 50px auto 30px auto; /* Reduced bottom margin for submit button */
     background-color: #28a745; /* Green color for submit */
     color: white;
     border: none;
@@ -675,4 +688,232 @@ details summary {
     background-color: #218838; /* Darker green on hover */
     transform: translateY(-2px); /* Slight lift effect */
     box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+@media (max-width: 768px) {
+    body {
+        margin: 10px 10px 30px; /* Smaller margins for mobile */
+        font-size: 0.9em; /* Slightly smaller base font size for mobile */
+    }
+
+    h1 {
+        font-size: 2.5em; /* Smaller H1 for mobile */
+    }
+
+    h2 {
+        font-size: 1.8em; /* Smaller H2 for mobile */
+    }
+
+    h3 {
+        font-size: 1.5em; /* Smaller H3 for mobile */
+    }
+
+    .form-section {
+        flex-direction: column; /* Stack elements vertically */
+        padding: 10px;
+        max-width: calc(100% - 20px); /* Adjust max-width and margin for centering */
+        margin: 10px auto;
+        box-sizing: border-box; /* Include padding in width calculation */
+    }
+
+    .form-section label[for="webhook-url"] {
+        font-size: 1em;
+        text-align: center; /* Center webhook label */
+        margin-bottom: 5px;
+    }
+
+    #webhook-url {
+        width: calc(100% - 20px); /* Adjust width to account for padding */
+        box-sizing: border-box; /* Include padding in width */
+        margin: 0 auto 10px auto; /* Center with space below */
+        font-size: 1em; /* Smaller font size for mobile */
+    }
+
+    #check-webhook {
+        width: calc(100% - 20px);
+        box-sizing: border-box;
+        font-size: 1em; /* Smaller font size for mobile */
+        padding: 10px; /* Adjust padding for better look on small screens */
+        margin: 0 auto;
+    }
+
+    .rule-section {
+        margin-bottom: 20px; /* Add spacing between notification rules on mobile */
+        box-sizing: border-box;
+        padding: 10px;
+    }
+
+    .notification-rule-header {
+        font-size: 1.5em; /* Smaller rule header for mobile */
+        flex-direction: column; /* Stack title and button */
+        text-align: center; /* Center text */
+    }
+
+    .notification-rule-header .delete-icon-button {
+        margin-top: 10px; /* Space between title and button */
+    }
+
+    .user-role-ping-syntax {
+        max-width: calc(100% - 20px); /* Allow full width for dropdown, account for parent padding */
+        margin: 10px auto; /* Center with adjusted margin */
+        box-sizing: border-box;
+    }
+
+    .user-role-ping-syntax summary {
+        font-size: 0.8em; /* Smaller font for summary */
+    }
+
+    .user-role-ping-syntax p {
+        font-size: 0.8em; /* Smaller font for content */
+    }
+
+    .match-type-selection-container {
+        flex-direction: row; /* Keep buttons in a row */
+        flex-wrap: wrap; /* Allow wrapping */
+        justify-content: space-around; /* Space out buttons */
+        max-width: 100%; /* Full width */
+        gap: 8px; /* Slightly smaller gap */
+        box-sizing: border-box;
+    }
+
+    .match-type-button {
+        width: calc(33.33% - 16px); /* 3 buttons per row with gap */
+        min-width: 80px; /* Ensure minimum size - Adjust as needed */
+        height: auto; /* Adjust height automatically */
+        padding: 8px 5px; /* Adjust padding, slightly smaller */
+        font-size: 0.8em; /* Smaller font size */
+        margin: 0; /* Remove auto margin */
+        box-sizing: border-box; /* Include padding in width calculation */
+    }
+
+    .battle-mode-selection-container {
+        flex-direction: row; /* Two columns for battle mode buttons */
+        flex-wrap: wrap;
+        justify-content: space-around;
+        max-width: 100%; /* Full width */
+        gap: 8px; /* Slightly smaller gap */
+        box-sizing: border-box;
+    }
+
+    .battle-mode-button {
+        width: calc(50% - 15px); /* Two buttons per row with gap */
+        min-width: 120px; /* Ensure minimum size */
+        height: auto; /* Adjust height automatically */
+        padding: 8px 10px; /* Adjust padding, slightly smaller */
+        font-size: 0.9em; /* Smaller font size */
+        margin: 0; /* No auto margin */
+        box-sizing: border-box; /* Include padding in width calculation */
+    }
+
+    .notify-type-selection-container {
+        flex-direction: column; /* Keep stacked for now, as it's a specific use case */
+        max-width: 100%; /* Full width */
+        gap: 8px; /* Slightly smaller gap */
+        box-sizing: border-box;
+    }
+
+    .notify-type-button {
+        width: calc(100% - 20px); /* Full width on mobile, accounting for rule-section padding */
+        height: auto; /* Adjust height automatically */
+        padding: 8px 10px; /* Adjust padding, slightly smaller */
+        font-size: 0.9em; /* Smaller font size */
+        margin: 0 auto; /* Center buttons */
+        box-sizing: border-box; /* Include padding in width calculation */
+    }
+
+    .map-list {
+        display: flex; /* Ensure flexbox for layout */
+        flex-wrap: wrap; /* Allow wrapping for multiple map items */
+        justify-content: center; /* Center items for better appearance */
+        gap: 10px; /* Spacing between map items */
+        padding: 0 5px; /* Add slight padding to the list container */
+    }
+
+    .map-item {
+        width: calc(50% - 15px); /* Two map buttons per row with gap */
+        box-sizing: border-box;
+        margin: 0; /* No auto margin here, let flexbox handle spacing */
+        overflow: hidden; /* Ensure image is clipped to border-radius */
+        border-radius: 8px; /* Apply border radius here */
+    }
+
+    .map-item img {
+        width: 100%; /* Make map image fill its container */
+        height: 100px; /* Keep a consistent height, adjust as needed */
+        object-fit: cover;
+        display: block;
+        margin: 0; /* Remove auto margin */
+        border-radius: 8px 8px 0 0;
+    }
+
+    .map-caption {
+        font-size: 0.75em; /* Slightly larger font still small */
+        padding: 2px 5px; /* Reduced padding */
+    }
+
+    .map-selector-header {
+        font-size: 1.2em; /* Smaller map selector header */
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+
+    .battle-mode-header-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .time-slots-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Aim for 3 columns on tablets, max 4 (more space) */
+        gap: 5px;
+        max-width: 100%; /* Full width */
+        padding: 0 10px; /* Add some padding to the container */
+        box-sizing: border-box;
+    }
+
+    .timeslot-box {
+        font-size: 0.85em; /* Increased font for timeslot */
+        height: auto; /* Adjust height automatically */
+        padding: 5px; /* Reduced padding */
+        box-sizing: border-box;
+    }
+
+    @media (max-width: 480px) {
+        .time-slots-container {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Aim for 2 columns on phones */
+        }
+
+        .timeslot-box {
+            font-size: 0.8em; /* Slightly larger in the smallest view */
+            padding: 6px;
+        }
+    }
+
+    .footer {
+        height: auto;
+        padding: 5px 0;
+        font-size: 0.7em;
+        line-height: normal; /* Allow text to wrap */
+    }
+
+    .notification-message-label {
+        font-size: 1em;
+    }
+
+    .notification-message-input {
+        width: calc(100% - 20px); /* Take full width minus form-section padding */
+        max-width: 100%;
+        font-size: 0.9em;
+        padding: 10px;
+        box-sizing: border-box; /* Ensure proper width calculation */
+        margin: 0 auto 20px auto;
+    }
+
+    .main-submit-button {
+        width: calc(100% - 40px); /* Adjust width to account for body margins */
+        font-size: 1.8em; /* Smaller font for submit button */
+        padding: 15px 20px;
+        margin: 30px auto;
+        box-sizing: border-box;
+    }
 }

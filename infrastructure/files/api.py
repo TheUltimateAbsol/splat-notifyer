@@ -4,6 +4,8 @@ import urllib.request
 import boto3
 from datetime import datetime, timezone, timedelta
 import re
+import hashlib
+import time # Added for retry delay
 
 # S3 related imports and environment variables from notifyer_update.py
 s3 = boto3.client("s3")
@@ -19,7 +21,7 @@ dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 scheduler_client = boto3.client("scheduler")
 
-def send_discord_message(webhook_url, message_content):
+def send_discord_message(webhook_url, message_content, retries=5, initial_delay=1):
     payload = {
         "content": message_content
     }
@@ -27,14 +29,34 @@ def send_discord_message(webhook_url, message_content):
         "Content-Type": "application/json",
         "User-Agent": "python-requests/2.32.3"
     }
-    req = urllib.request.Request(webhook_url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
-    try:
-        with urllib.request.urlopen(req) as response:
-            status_code = response.getcode()
-            return 200 <= status_code < 300
-    except urllib.error.URLError as e:
-        print(f"Error sending message to Discord: {e}")
-        return False
+
+    for i in range(retries):
+        req = urllib.request.Request(webhook_url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+        try:
+            with urllib.request.urlopen(req) as response:
+                status_code = response.getcode()
+                if 200 <= status_code < 300:
+                    print(f"Successfully sent Discord message after {i+1} attempts.")
+                    return True
+                else:
+                    print(f"Discord API returned status {status_code} on attempt {i+1}.")
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                retry_after = int(e.headers.get("Retry-After", initial_delay * (2 ** i)))
+                print(f"Rate limited by Discord (429) on attempt {i+1}. Retrying after {retry_after} seconds.")
+                time.sleep(retry_after)
+            else:
+                print(f"HTTP Error sending message to Discord on attempt {i+1}: {e.code} - {e.reason}")
+                return False
+        except urllib.error.URLError as e:
+            print(f"URL Error sending message to Discord on attempt {i+1}: {e.reason}")
+            return False
+        except Exception as e:
+            print(f"An unexpected error occurred sending message to Discord on attempt {i+1}: {e}")
+            return False
+            
+    print(f"Failed to send Discord message after {retries} attempts.")
+    return False
 
 def validate_rules_payload(payload):
     # Top-level validation
@@ -184,10 +206,8 @@ def process_notifications(payload, timestamp):
             break
 
         battle_mode_name = node['matchSettings']['vsRule']['name']
-        battle_mode_name = node['matchSettings']['vsRule']['name']
         map_names = [stage['name'] for stage in node['matchSettings']['vsStages']]
         map_ids = [stage['id'] for stage in node['matchSettings']['vsStages']]
-
 
         for rule in rules:
             # Check matchType
@@ -270,7 +290,7 @@ def lambda_handler(event, context):
         }
 
     # Calculate timestamp 22 hours in the future from now (UTC)
-    future_timestamp = datetime.now(timezone.utc) + timedelta(hours=22)
+    future_timestamp = datetime.now(timezone.utc) + timedelta(hours=20)
     
     full_notification_payload = {
         "webhook_url": webhook_url,
@@ -388,7 +408,12 @@ def handler(event, context):
             }
 
         current_timestamp = datetime.now(timezone.utc).isoformat()
-        schedule_name = f"splat-notifyer-{abs(hash(webhook_url))}" # Unique name for schedule
+        # Use a cryptographic hash and truncate to ensure consistent and valid schedule names
+        # The prefix "splat-notifyer-" is 15 chars. Max length for Name is 64.
+        # Remaining length for hash: 64 - 15 = 49 characters.
+        # A SHA256 hexdigest is 64 characters long, so we'll slice it to 49.
+        hash_digest = hashlib.sha256(webhook_url.encode('utf-8')).hexdigest()
+        schedule_name = f"splat-notifyer-{hash_digest[:49]}"
 
         # Create/Update EventBridge Schedule
         try:

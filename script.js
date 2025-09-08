@@ -352,9 +352,25 @@ document.addEventListener('DOMContentLoaded', async (event) => {
 document.getElementById('main-submit-button').addEventListener('click', async (event) => {
     event.preventDefault(); // Prevent default form submission
 
+    const submitButton = event.currentTarget;
+    const originalButtonText = submitButton.textContent;
+    const originalButtonBg = submitButton.style.backgroundColor; // Store original background
+    const responseDiv = document.getElementById('response');
+
+    // Clear and hide previous response
+    responseDiv.innerHTML = '';
+    responseDiv.style.display = 'none';
+
     if (!validateForm()) {
+        // If validation fails, the validateForm function will display errors to responseDiv
+        // and set its display to 'block'.
         return;
     }
+
+    // Indicate submitting state
+    submitButton.textContent = 'Submitting...';
+    submitButton.style.backgroundColor = '#6c757d'; // Dark grey for submitting state
+    submitButton.disabled = true; // Disable button to prevent multiple submissions
 
     const formData = collectFormData();
     const jsonPayload = JSON.stringify(formData);
@@ -370,20 +386,27 @@ document.getElementById('main-submit-button').addEventListener('click', async (e
         });
 
         const result = await response.json();
-        const responseDiv = document.getElementById('response');
         if (response.ok) {
-            responseDiv.innerHTML = `<div style="color: green;">Configuration submitted successfully: <pre>${JSON.stringify(result, null, 2)}</pre></div>`;
+            responseDiv.innerHTML = `<span style="color: green;"><span style="font-family: 'BlitzBold', sans-serif;">Configuration submitted successfully!</span></span>`;
+            responseDiv.style.display = 'block'; // Show success message
+            // No need to show JSON on success unless explicitly requested
         } else {
-            responseDiv.innerHTML = `<div style="color: red;">Error submitting configuration: <pre>${JSON.stringify(result, null, 2)}</pre></div>`;
+            responseDiv.innerHTML = `<span style="color: red;"><span style="font-family: 'BlitzBold', sans-serif;">Error submitting configuration:</span><pre>${JSON.stringify(result, null, 2)}</pre></span>`;
+            responseDiv.style.display = 'block'; // Show error message
             console.error('Error submitting configuration:', result);
         }
         responseDiv.scrollIntoView({ behavior: 'smooth' });
 
     } catch (error) {
-        const responseDiv = document.getElementById('response');
-        responseDiv.innerHTML = `<div style="color: red;">Network error: ${error.message}</div>`;
+        responseDiv.innerHTML = `<span style="color: red;"><span style="font-family: 'BlitzBold', sans-serif;">Network error:</span> ${error.message}</span>`;
+        responseDiv.style.display = 'block'; // Show network error
         responseDiv.scrollIntoView({ behavior: 'smooth' });
         console.error('Network error:', error);
+    } finally {
+        // Restore button state
+        submitButton.textContent = originalButtonText;
+        submitButton.style.backgroundColor = originalButtonBg || ''; // Restore original or clear if it was default
+        submitButton.disabled = false;
     }
 });
 
@@ -536,10 +559,14 @@ function validateForm() {
 
     const responseDiv = document.getElementById('response');
     if (!isValid) {
-        responseDiv.innerHTML = `<div style="color: red;">${errorMessage}</div>`;
+        responseDiv.innerHTML = `<span style="color: red;"><span style="font-family: 'BlitzBold', sans-serif;">Form Validation Errors:</span><br>${errorMessage}</span>`;
+        responseDiv.style.display = 'block'; // Show the response div for validation errors
         responseDiv.scrollIntoView({ behavior: 'smooth' });
     } else {
-        responseDiv.innerHTML = ''; // Clear previous errors
+        // If validation passes, ensure the response div is hidden and cleared if no errors were found.
+        // It will be shown later if there's a submission success/error.
+        responseDiv.innerHTML = '';
+        responseDiv.style.display = 'none';
     }
 
     return isValid;
