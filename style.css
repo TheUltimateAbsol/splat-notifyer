@@ -1,11 +1,69 @@
+@font-face {
+    font-family: 'BlitzBold';
+    src: url('./assets/BlitzBold.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'BlitzMain';
+    src: url('./assets/BlitzMain.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+:root {
+    --open-match-type-color: #F54910; /* Orange from Anarchy.svg */
+    --series-match-type-color: #d59a10; /* Gold-brown, hue shift of orange */
+    --x-battle-match-type-color: #0FDB9B; /* Teal from X-Battle.svg */
+}
+
 html {
     position: relative;
     min-height: 100%;
 }
 
 body {
-    font-family: sans-serif;
+    font-family: 'BlitzMain', sans-serif;
     margin: 20px 20px 40px; /* Adjusted margin for overall page content, leaving space for footer */
+    background-color: black; /* Fallback background color */
+    background-image: url('./assets/DarkMode-Footer.png'); /* Darkmode footer background */
+    background-repeat: repeat; /* Ensure the image tiles */
+    background-size: 200px; /* Make background tiles larger for subtlety */
+    color: white; /* Make default text color white for dark background */
+}
+
+h1 {
+    font-family: 'BlitzBold', sans-serif;
+    font-size: 3.2em; /* Made main title slightly bigger */
+}
+
+h2, h4, h5, h6 {
+    font-family: 'BlitzBold', sans-serif;
+}
+
+/* Specific style for notification rule headers */
+.notification-rule-header {
+    font-family: 'BlitzBold', sans-serif; /* Ensure it uses the bold font */
+    font-size: 2em; /* Significantly larger than map selector header (1.5em) */
+    color: black; /* Default color: black, as forms still have light backgrounds */
+    margin-bottom: 20px;
+    display: flex; /* Allow button to align with text */
+    align-items: center; /* Vertically align items */
+    justify-content: space-between; /* Push button to the right */
+}
+
+/* Ensure Notification Rule header and delete icon turn white when a match type is selected */
+.rule-section.selected-open .notification-rule-header,
+.rule-section.selected-series .notification-rule-header,
+.rule-section.selected-x-battle .notification-rule-header {
+    color: white;
+}
+
+.rule-section.selected-open .delete-icon-button,
+.rule-section.selected-series .delete-icon-button,
+.rule-section.selected-x-battle .delete-icon-button {
+    color: white; /* Ensure delete icon color changes to white */
 }
 
 .footer {
@@ -27,9 +85,594 @@ body {
     margin: 0; /* Remove default paragraph margin */
     padding: 0;
 }
-.form-section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-.map-selector { border: 1px dashed #eee; padding: 10px; margin-top: 10px; border-radius: 3px; }
-.map-item { display: inline-block; text-align: center; margin: 10px; }
-.map-item img { width: 150px; height: 100px; object-fit: cover; border: 1px solid #ddd; }
+.form-section {
+    border: 2px solid #ddd; /* Thinner border */
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 10px; /* More rounded corners */
+    transition: border-color 0.3s ease-in-out, background-color 0.3s ease-in-out, color 0.3s ease-in-out; /* Smooth transition for color changes */
+}
+
+.form-section label[for="webhook-url"] {
+    font-size: 1.2em; /* Made webhook URL label slightly bigger */
+}
+
+#webhook-url {
+    font-size: 1.1em; /* Made webhook URL text box slightly bigger */
+    padding: 8px; /* Added padding for better appearance */
+}
+
+#check-webhook {
+    font-size: 1.1em; /* Made 'Check' button slightly bigger */
+    padding: 8px 15px; /* Added padding for better appearance */
+}
+
+#webhook-feedback {
+    color: white; /* Changed webhook status text to white */
+}
+
+.rule-section {
+    background-image: url('./assets/S3_NT_background.png');
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+    background-color: #f5f5f5; /* Light background color for a lighter multiply effect */
+    border: 2px solid #ddd; /* Thinner border */
+    border-radius: 10px; /* More rounded corners */
+    color: black; /* Default text color for the rule form */
+}
+
+details {
+    /* No border or other styling for the details element itself */
+}
+
+details summary {
+    outline: none; /* Remove outline on focus for the summary */
+    cursor: pointer; /* Indicates it's clickable */
+    font-size: 1.3em; /* Made FAQ summary slightly bigger */
+}
+
+/* Styles for "rule-section" when a match type is selected */
+.rule-section.selected-open {
+    background-color: var(--open-match-type-color);
+    color: white; /* Change text color to white */
+    border-color: var(--open-match-type-color);
+}
+
+.rule-section.selected-open label,
+.rule-section.selected-open input[type="text"],
+.rule-section.selected-open .map-caption { /* Make sure caption text is white or readable */
+    color: white;
+}
+
+.rule-section.selected-series {
+    background-color: var(--series-match-type-color);
+    color: white; /* Change text color to white */
+    border-color: var(--series-match-type-color);
+}
+
+.rule-section.selected-series label,
+.rule-section.selected-series input[type="text"],
+.rule-section.selected-series .map-caption {
+    color: white;
+}
+
+.rule-section.selected-x-battle {
+    background-color: var(--x-battle-match-type-color);
+    color: white; /* Change text color to white */
+    border-color: var(--x-battle-match-type-color);
+}
+
+.rule-section.selected-x-battle label,
+.rule-section.selected-x-battle input[type="text"],
+.rule-section.selected-x-battle .map-caption {
+    color: white;
+}
+/* Centering the User/Role Ping Syntax dropdown */
+.user-role-ping-syntax {
+    max-width: 600px; /* Adjust width as needed for centering */
+    margin: 10px auto; /* Reduced margin */
+    padding: 5px; /* Reduced padding */
+    background-color: #f9f9f9; /* Light background for the dropdown content */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: none; /* Removed box-shadow for subtlety */
+}
+
+.user-role-ping-syntax summary {
+    font-family: 'BlitzMain', sans-serif; /* Changed to regular font for subtlety */
+    color: black; /* Changed to black, as this is within a form with a light background */
+    font-size: 0.9em; /* Reduced font size for subtlety */
+    padding: 2px 0; /* Reduced padding */
+    text-align: center; /* Center the summary text */
+}
+
+.user-role-ping-syntax p {
+    color: black; /* Ensure the content text is black, as this is within a form with a light background */
+}
+
+.map-selector { padding: 10px; margin-top: 10px; border-radius: 3px; }
+
+.map-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Spacing between map items */
+    justify-content: center;
+}
+
+.map-item {
+    position: relative;
+    border: 4px solid transparent; /* Default border */
+    border-radius: 8px;
+    overflow: hidden; /* Ensures rounded corners are respected */
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s ease-in-out;
+    filter: grayscale(100%); /* Apply black and white filter by default */
+}
+
+.map-item.selected {
+    border-color: #007bff; /* Highlight color when selected */
+    border-width: 4px; /* Ensure selected border is also thicker */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+    filter: none; /* Remove filter when selected */
+}
+
+.map-item-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.map-item img {
+    width: 150px;
+    height: 100px;
+    object-fit: cover;
+    display: block; /* Remove extra space below image */
+    border-radius: 8px 8px 0 0; /* Rounded top corners, sharp bottom */
+    position: relative; /* For icon positioning */
+}
+
+.map-caption {
+    background-color: black;
+    color: white;
+    padding: 0px 10px; /* Reduced vertical padding to 0 */
+    font-size: 0.8em; /* Reduced font size to 0.8em */
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 0 0 8px 8px;
+}
+
+.map-selector-header {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Increased gap for better spacing */
+    font-size: 1.5em; /* Made header text bigger */
+}
+
+.battle-mode-header-icon {
+    width: 36px; /* Made icon bigger */
+    height: 36px; /* Made icon bigger */
+    vertical-align: middle;
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.7)); /* Add a subtle drop shadow */
+}
+
+.battle-mode-icon-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 36px;
+    height: 36px;
+    background-color: black;
+    border-radius: 0 8px 0 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 0;
+    right: 0;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+.battle-mode-icon {
+    width: 28px;
+    height: 28px;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* General classes */
 .error-message { color: red; margin-left: 10px; }
 .hidden { display: none; }
+
+/* Battle Mode Buttons */
+.battle-mode-selection-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center; /* Centers items horizontally within the flex container */
+    align-items: center; /* Centers items vertically if container has more height than sum of items */
+    max-width: 750px; /* Calculated max-width for 4 buttons + gaps (180*4 + 3*10 = 720+30=750) */
+    margin: 0 auto; /* Center the entire flex container */
+}
+
+.battle-mode-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 180px; /* Uniform width (50% wider than original 120px) */
+    height: 120px; /* Uniform height (20% shorter than previous 150px) */
+    padding: 10px;
+    border: 2px solid #563aa8;
+    border-radius: 8px;
+    background-color: #4a3299; /* Darker purple */
+    background-image:
+        radial-gradient(circle at 15% 15%, rgba(120, 90, 180, 0.7) 0%, rgba(120, 90, 180, 0) 25%), /* Adjusted purple corner reflection */
+        radial-gradient(circle at 85% 15%, rgba(120, 90, 180, 0.7) 0%, rgba(120, 90, 180, 0) 25%), /* Adjusted purple corner reflection */
+        linear-gradient(
+            150deg, /* angled for a more dynamic look */
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(120, 90, 180, 0.4) 15%, /* Darker highlight */
+            rgba(255, 255, 255, 0.1) 25%, /* Sharper, more centralized highlight */
+            rgba(120, 90, 180, 0.0) 40%,
+            rgba(120, 90, 180, 0.0) 60%,
+            rgba(255, 255, 255, 0.1) 75%, /* Sharper, more centralized highlight */
+            rgba(120, 90, 180, 0.4) 85%, /* Darker highlight */
+            rgba(255, 255, 255, 0.0) 100%
+        );
+    cursor: pointer;
+    font-family: 'BlitzBold', sans-serif;
+    font-size: 1.1em; /* Further increased font size for battle mode buttons */
+    text-align: center;
+    transition: all 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    color: white; /* Changed text color to white for contrast */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 0 15px rgba(255,255,255,0.2); /* More depth with shadows */
+    transform: perspective(1000px) rotateX(5deg) scale(1); /* 3D effect in unselected state */
+}
+
+.battle-mode-button.selected {
+    background-color: #D4EB8A; /* Slightly darker yellow for more depth */
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 30%), /* Increased size and offset for radial reflections */
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 30%),
+        linear-gradient(
+            -150deg, /* Angled in opposite direction for contrast */
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(255, 255, 255, 0.6) 15%, /* Brighter, sharper highlight */
+            rgba(255, 255, 255, 0.2) 25%, /* Mid-tone for depth */
+            rgba(255, 255, 255, 0.0) 40%,
+            rgba(255, 255, 255, 0.0) 60%,
+            rgba(255, 255, 255, 0.2) 75%, /* Mid-tone for depth */
+            rgba(255, 255, 255, 0.6) 85%, /* Brighter, sharper highlight */
+            rgba(255, 255, 255, 0.0) 100%
+        );
+    color: #333; /* Changed text color to a darker shade for contrast with light green */
+    border-color: #D4EB8A;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,255,255,0.6); /* More prominent outer and inner shadow for selected */
+    transform: perspective(1000px) rotateX(0deg) translateY(-4px); /* More pronounced 3D lift */
+}
+
+.battle-mode-button-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 5px;
+    filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.7)); /* Subtle drop shadow for SVGs */
+}
+
+.battle-mode-button.selected .battle-mode-button-icon {
+    /* No filter for selected state */
+}
+
+/* Match Type Buttons */
+.match-type-selection-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 10px auto;
+    max-width: 750px; /* Adjust as needed for 3 buttons */
+}
+
+.match-type-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 200px; /* Adjust width as needed */
+    height: 100px; /* Adjust height as needed */
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    font-family: 'BlitzBold', sans-serif;
+    font-size: 1.2em; /* Further increased font size for match type buttons */
+    text-align: center;
+    transition: all 0.2s ease-in-out;
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.match-type-button.selected {
+    color: white;
+    border-color: transparent; /* Border color will be managed by background-color */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.match-type-button.selected.open {
+    background-color: var(--open-match-type-color);
+}
+
+.match-type-button.selected.series {
+    background-color: var(--series-match-type-color);
+}
+
+.match-type-button.selected.x-battle {
+    background-color: var(--x-battle-match-type-color);
+    color: white; /* Ensure text is white when selected */
+    border-color: transparent; /* Border color will be managed by background-color */
+}
+
+.match-type-button-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 5px;
+    /* Invert for dark backgrounds if necessary, or ensure SVGs are monocolor */
+}
+
+/* Style for the delete icon button */
+.delete-icon-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px; /* Even padding around the icon for consistent spacing */
+    margin: 0; /* Remove negative margin, rely on padding */
+    border-radius: 4px; /* Maintain slight border radius for the potential outline */
+    color: currentColor; /* Inherit the color from the parent element (notification-rule-header) */
+    transition: all 0.2s ease-in-out; /* Transition all properties for smooth hover */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-icon-button:hover {
+    color: currentColor; /* Icon color should not change on hover */
+    background-color: transparent; /* No background fill on hover */
+    border: 2px solid rgba(0, 0, 0, 0.5); /* Black outline for hover */
+    box-shadow: -4px 0 8px rgba(0, 0, 0, 0.4), 4px 0 8px rgba(0, 0, 0, 0.4); /* Side dropshadow, now black */
+}
+
+.delete-icon-button svg {
+    width: 28px; /* Make SVG icon bigger */
+    height: 28px; /* Make SVG icon bigger */
+    fill: currentColor; /* Use the button's color for the SVG fill */
+}
+
+/* Time Slot Boxes */
+.time-slots-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); /* Reverting to wider individual item width, but still 6 columns */
+    gap: 10px;
+    justify-content: center; /* Centers the grid tracks if they don't fill the full width */
+    max-width: 1310px; /* Adjusted max-width for 6 columns + gaps (210 * 6 + 5 * 10 = 1260 + 50 = 1310) */
+    margin: 0 auto; /* Center the entire grid container */
+}
+
+.notify-type-selection-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px; /* Reduced gap */
+    justify-content: center; /* Centers items horizontally */
+    margin: 10px auto; /* Center the container and add some vertical margin */
+    max-width: 950px; /* Adjusted max-width to at least 950px as requested */
+}
+
+.notify-type-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 440px; /* Reduced width */
+    height: 60px; /* Reduced height */
+    padding: 10px;
+    border: 2px solid #563aa8;
+    border-radius: 8px;
+    background-color: #402c8a; /* Darker purple */
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(100, 80, 160, 0.8) 0%, rgba(100, 80, 160, 0) 30%), /* Adjusted purple corner reflection */
+        radial-gradient(circle at 80% 20%, rgba(100, 80, 160, 0.8) 0%, rgba(100, 80, 160, 0) 30%), /* Adjusted purple corner reflection */
+        linear-gradient(
+            200deg, /* angled for a more dynamic look */
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(100, 80, 160, 0.5) 10%, /* Darker highlight */
+            rgba(255, 255, 255, 0.15) 20%, /* Sharper, more centralized highlight */
+            rgba(100, 80, 160, 0.0) 35%,
+            rgba(100, 80, 160, 0.0) 65%,
+            rgba(255, 255, 255, 0.15) 80%, /* Sharper, more centralized highlight */
+            rgba(100, 80, 160, 0.5) 90%, /* Darker highlight */
+            rgba(255, 255, 255, 0.0) 100%
+        );
+    cursor: pointer;
+    font-size: 1em; /* Slightly larger text */
+    text-align: center;
+    transition: all 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    color: white; /* Changed text color to white for contrast */
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.25); /* More depth with shadows */
+    transform: perspective(1000px) rotateX(7deg) scale(1); /* 3D effect in unselected state */
+}
+
+.notify-type-button.selected {
+    background-color: #C0DE7F; /* Darker yellow for more depth */
+    background-image:
+        radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 35%), /* More intense, larger radial reflections */
+        radial-gradient(circle at 75% 25%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 35%),
+        linear-gradient(
+            -200deg, /* Angled in opposite direction for contrast */
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(255, 255, 255, 0.7) 10%, /* Brighter, sharper highlight */
+            rgba(255, 255, 255, 0.3) 20%, /* Mid-tone for depth */
+            rgba(255, 255, 255, 0.0) 35%,
+            rgba(255, 255, 255, 0.0) 65%,
+            rgba(255, 255, 255, 0.3) 80%, /* Mid-tone for depth */
+            rgba(255, 255, 255, 0.7) 90%, /* Brighter, sharper highlight */
+            rgba(255, 255, 255, 0.0) 100%
+        );
+    color: #333; /* Keep text color for contrast with light yellow */
+    border-color: #C0DE7F;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 0 25px rgba(255,255,255,0.7); /* More prominent outer and inner shadow for selected */
+    transform: perspective(1000px) rotateX(0deg) translateY(-6px); /* More pronounced 3D lift */
+}
+
+/* Style for the Notification Message input field */
+.notification-message-label {
+    display: block; /* Ensures label takes its own line */
+    text-align: center; /* Center the label text */
+    margin-bottom: 5px; /* Space between label and input */
+    font-family: 'BlitzBold', sans-serif; /* Consistent font */
+    color: black; /* Changed to black, as this is for an input field within a form */
+}
+
+.notification-message-input {
+    width: 80%; /* Make it wider */
+    max-width: 600px; /* Cap maximum width */
+    height: 100px; /* Make it multiline */
+    padding: 12px;
+    margin: 0 auto 20px auto;
+    display: block; /* Ensure it takes full width for centering */
+    border: 2px solid lighten(#563aa8, 10%); /* Lighter border for contrast with white background */
+    border-radius: 8px; /* Rounded corners */
+    background-color: white; /* Solid white background */
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(240,240,240,0.9) 100%); /* Subtle gradient */
+    color: black; /* Ensure text is always black */
+    font-family: 'BlitzMain', sans-serif;
+    font-size: 1em;
+    text-align: left; /* Align text to left for multiline */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Subtle shadow */
+    transition: all 0.2s ease-in-out;
+    resize: vertical; /* Allow vertical resizing */
+}
+
+.notification-message-input:focus {
+    border-color: #007bff; /* Blue highlight on focus for better visibility */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    outline: none; /* Remove default outline */
+    background-image: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%); /* Maintain gradient on focus */
+}
+
+/* Ensure selected match type rule sections still have black text for textareas */
+.rule-section.selected-open .notification-message-input,
+.rule-section.selected-series .notification-message-input,
+.rule-section.selected-x-battle .notification-message-input {
+    color: black; /* Ensure text is always black within the input box */
+}
+
+.timeslot-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 2px solid #563aa8;
+    border-radius: 8px;
+    background-color: #402c8a; /* Darker purple */
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(100, 80, 160, 0.8) 0%, rgba(100, 80, 160, 0) 30%), /* Adjusted purple corner reflection */
+        radial-gradient(circle at 80% 20%, rgba(100, 80, 160, 0.8) 0%, rgba(100, 80, 160, 0) 30%), /* Adjusted purple corner reflection */
+        linear-gradient(
+            200deg, /* angled for a more dynamic look */
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(100, 80, 160, 0.5) 10%, /* Darker highlight */
+            rgba(255, 255, 255, 0.15) 20%, /* Sharper, more centralized highlight */
+            rgba(100, 80, 160, 0.0) 35%,
+            rgba(100, 80, 160, 0.0) 65%,
+            rgba(255, 255, 255, 0.15) 80%, /* Sharper, more centralized highlight */
+            rgba(100, 80, 160, 0.5) 90%, /* Darker highlight */
+            rgba(255, 255, 255, 0.0) 100%
+        );
+    cursor: pointer;
+    font-size: 0.9em;
+    text-align: center;
+    transition: all 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    color: white; /* Keep text white for contrast with dark purple */
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.25); /* More depth with shadows */
+    transform: perspective(1000px) rotateX(7deg) scale(1); /* 3D effect in unselected state */
+    height: 58px; /* Current desired height */
+    /* width is now controlled by grid-template-columns */
+}
+
+.timeslot-box.selected {
+    background-color: #C0DE7F; /* Darker yellow for more depth */
+    background-image:
+        radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 35%), /* More intense, larger radial reflections */
+        radial-gradient(circle at 75% 25%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 35%),
+        linear-gradient(
+            -200deg, /* Angled in opposite direction for contrast */
+            rgba(255, 255, 255, 0.0) 0%,
+            rgba(255, 255, 255, 0.7) 10%, /* Brighter, sharper highlight */
+            rgba(255, 255, 255, 0.3) 20%, /* Mid-tone for depth */
+            rgba(255, 255, 255, 0.0) 35%,
+            rgba(255, 255, 255, 0.0) 65%,
+            rgba(255, 255, 255, 0.3) 80%, /* Mid-tone for depth */
+            rgba(255, 255, 255, 0.7) 90%, /* Brighter, sharper highlight */
+            rgba(255, 255, 255, 0.0) 100%
+        );
+    color: #333; /* Keep text color for contrast with light yellow */
+    border-color: #C0DE7F;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 0 25px rgba(255,255,255,0.7); /* More prominent outer and inner shadow for selected */
+    transform: perspective(1000px) rotateX(0deg) translateY(-6px); /* More pronounced 3D lift */
+}
+
+/* Style for the "Add Another Rule" clickable text */
+.add-another-rule-text {
+    display: block; /* Make it a block element to control spacing and centering */
+    text-align: center;
+    font-size: 1.8em; /* Much larger font size */
+    font-family: 'BlitzBold', sans-serif;
+    color: #007bff; /* A distinct color to indicate it's clickable */
+    cursor: pointer;
+    padding: 15px 0; /* Plenty of vertical spacing */
+    margin: 30px auto; /* Centered with extra vertical margin */
+    transition: color 0.2s ease-in-out;
+}
+
+#response {
+    text-align: center; /* Center the text */
+    margin: 20px auto; /* Center the div and give it vertical spacing */
+    max-width: 700px; /* Limit its width for better readability */
+}
+
+#response div {
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: inline-block; /* Allow text-align: center to work on its parent */
+}
+
+.add-another-rule-text:hover {
+    color: #0056b3; /* Darker blue on hover */
+}
+
+/* Style for the "Submit Configuration" button */
+.main-submit-button {
+    display: block;
+    width: 80%; /* Increased width */
+    max-width: 550px; /* Cap maximum width further to ensure single line for larger text */
+    padding: 20px 30px;
+    margin: 50px auto 80px auto;
+    background-color: #28a745; /* Green color for submit */
+    color: white;
+    border: none;
+    border-radius: 10px; /* Rounded corners */
+    font-family: 'BlitzBold', sans-serif;
+    font-size: 2.5em; /* Much larger font size */
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3); /* Add text shadow for emphasis */
+}
+
+.main-submit-button:hover {
+    background-color: #218838; /* Darker green on hover */
+    transform: translateY(-2px); /* Slight lift effect */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}

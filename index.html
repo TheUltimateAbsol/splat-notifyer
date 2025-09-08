@@ -11,17 +11,25 @@
 
     <!-- Help Dropdown -->
     <details>
-        <summary>Help</summary>
-        <div id="help-content">
-            <!-- Help content will be populated here -->
-            <p>This form allows you to configure notifications for Splatoon 3 rotations.</p>
-            <ul>
-                <li>Enter your webhook URL and click "Check" to validate it.</li>
-                <li>Once validated, you can add multiple notification rules.</li>
-                <li>Each rule specifies match types, time slots, battle modes, and map preferences.</li>
-                <li>Click "Add Another" to create additional notification rules.</li>
-                <li>Finally, click "Submit" to save your configuration.</li>
-            </ul>
+        <summary>FAQ</summary>
+        <div id="faq-content">
+            <h3>What is this?</h3>
+            <p>This app will send notifications to a discord webhook in your channel based on future splatoon map/mode schedules</p><br>
+
+            <h3>What's a webhook?</h3>
+            <p>A url I can send messages to. I can't read data from them</p><br>
+
+            <h3>Why not a discord bot?</h3>
+            <p>Discord bots require a full stack of maintenance and takes a bit to set up into a server. You also can really only communicate to them through text message interactions and it's tedious. This is a simple form</p><br>
+
+            <h3>How do I get a webhook url?</h3>
+            <p>In a server that you own or have elevated permissions, go to a channel, click settings > integrations > webhooks. Should be intuitive to set it up and copy the URL from there.</p><br>
+
+            <h3>mom said to not hand credentials to strange people</h3>
+            <p>Look I'm not getting your login or auth tokens, this is a URL discord generates for the explicit purpose of allowing unauthenticated parties to send you new messages without requiring any special APIs or elevated access. I cannot read anything from your server, only send messages</p><br>
+
+            <h3>who are you?</h3>
+            <p>I'm from ink-95. probably says enough lmao</p>
         </div>
     </details>
 
@@ -45,42 +53,52 @@
             <div id="notification-rules-container">
                 <!-- Initial rule placeholder, will be replaced by JSON data -->
                 <div class="form-section rule-section" id="rule-1">
-                    <h3>Notification Rule #1 <button type="button" class="delete-rule-button" data-rule-id="1">Delete</button></h3>
+                    <h3 class="notification-rule-header">Notification Rule #1 <button type="button" class="delete-rule-button delete-icon-button" data-rule-id="1" aria-label="Delete Rule">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
+                            <path d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5L13.5 1S10.5 1 10.5 1H8.5L7 4H5v2h14V4z"/>
+                        </svg>
+                    </button></h3>
 
                     <!-- User/Role Ping Syntax Dropdown -->
                     <details class="user-role-ping-syntax">
                         <summary>User/Role Ping Syntax</summary>
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                        <p>To ping a specific user, use the format <code><@USER_ID></code>, where <code>USER_ID</code> is the unique ID of the Discord user you want to mention. i.e. <code><@123456789012345678></code></p>
+                        <p>To ping a specific role, use the format <code><@&ROLE_ID></code>, where <code>ROLE_ID</code> is the unique ID of the Discord role. i.e. <code><@&987654321098765432></code></p>
+                        <p>To find these IDs, see <a href="https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID" target="_blank" rel="noopener noreferrer">this article</a>. You may have to enable developer mode.</p>
                     </details>
                     <br>
 
                     <!-- Notification Message -->
-                    <label for="notificationMessage-1">Notification Message:</label>
-                    <input type="text" id="notificationMessage-1" name="notificationMessage-1" size="50" required>
+                    <label for="notificationMessage-1" class="notification-message-label">Notification Message:</label>
+                    <textarea id="notificationMessage-1" name="notificationMessage-1" class="notification-message-input" rows="4" maxlength="300" required></textarea>
                     <br><br>
 
                     <!-- Match Type -->
-                    <label>Match Type:</label>
-                    <select name="matchType-1">
-                        <option value="Open">Open</option>
-                        <option value="Series">Series</option>
-                        <option value="X-Battle">X-Battle</option>
-                    </select>
-                    <br><br>
-
+                    <div id="match-type-selection-1" class="match-type-selection-container">
+                        <button type="button" class="match-type-button open" data-match-type="Open" data-rule-num="1">
+                            <img src="assets/Anarchy.svg" alt="Open Icon" class="match-type-button-icon">
+                            <span>Open</span>
+                        </button>
+                        <button type="button" class="match-type-button series" data-match-type="Series" data-rule-num="1">
+                            <img src="assets/Anarchy.svg" alt="Series Icon" class="match-type-button-icon">
+                            <span>Series</span>
+                        </button>
+                        <button type="button" class="match-type-button x-battle" data-match-type="X-Battle" data-rule-num="1">
+                            <img src="assets/X-Battle.svg" alt="X-Battle Icon" class="match-type-button-icon">
+                            <span>X-Battle</span>
+                        </button>
+                    </div>
+                    <br>
                     <!-- Time Slots -->
-                    <label>Time Slots (UTC):</label><br>
                     <div id="time-slots-1">
                         <!-- Time slots will be dynamically generated and converted to user's timezone -->
                     </div>
                     <br>
-
                     <!-- Battle Modes -->
-                    <label>Battle Modes:</label><br>
-                    <input type="checkbox" name="battleMode-1" value="VnNSdWxlLTE="> Splat Zones
-                    <input type="checkbox" name="battleMode-1" value="VnNSdWxlLTI="> Tower Control
-                    <input type="checkbox" name="battleMode-1" value="VnNSdWxlLTM="> Rainmaker
-                    <input type="checkbox" name="battleMode-1" value="VnNSdWxlLTQ="> Clam Blitz
+                    <div id="battle-mode-selection-1" class="battle-mode-selection-container">
+                        <!-- Battle mode buttons will be dynamically generated by JS -->
+                    </div>
                     <br><br>
 
                     <!-- Map Selectors (dynamically added per battle mode) -->
@@ -90,9 +108,9 @@
                 </div>
             </div>
 
-            <button type="button" id="add-another-rule" class="add-another-button">+</button> Add Another
+            <span id="add-another-rule" class="add-another-rule-text">+ Add Another Rule</span>
             <br><br>
-            <button type="button" id="main-submit-button">Submit Configuration</button>
+            <button type="button" id="main-submit-button" class="main-submit-button">Submit Configuration</button>
         </form>
     </div>
 
