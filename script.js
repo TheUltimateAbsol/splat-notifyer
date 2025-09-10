@@ -25,9 +25,10 @@ function generateTimeSlots(container, ruleNum, selectedSlots = []) {
         let utcStart = new Date();
         utcStart.setUTCHours(hour, 0, 0, 0);
 
-        // Convert to local time
-        let localStart = new Date(utcStart.getTime() - (userTimezoneOffsetMinutes * 60 * 1000));
-        let localEnd = new Date(localStart.getTime() + (2 * 60 * 60 * 1000)); // Add 2 hours for the end of the slot
+        // Convert to local time directly from UTC (Date object handles local conversion)
+        // No manual subtraction needed as Date.get*() methods will return local time.
+        let localStart = new Date(utcStart);
+        let localEnd = new Date(utcStart.getTime() + (2 * 60 * 60 * 1000)); // Add 2 hours for the end of the slot in UTC before local conversion
 
         // Store data for sorting
         timeSlotData.push({
